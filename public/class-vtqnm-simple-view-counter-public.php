@@ -40,6 +40,8 @@ class Vtqnm_Simple_View_Counter_Public {
 	 */
 	private $version;
 
+    private $settings;
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -47,10 +49,11 @@ class Vtqnm_Simple_View_Counter_Public {
 	 * @param      string    $plugin_name       The name of the plugin.
 	 * @param      string    $version    The version of this plugin.
 	 */
-	public function __construct( $plugin_name, $version ) {
+	public function __construct( $plugin_name, $version, $settings ) {
 
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
+        $this->settings = $settings;
 
 	}
 
@@ -83,7 +86,6 @@ class Vtqnm_Simple_View_Counter_Public {
 	 * @since    1.0.0
 	 */
 	public function enqueue_scripts() {
-
 		/**
 		 * This function is provided for demonstration purposes only.
 		 *
@@ -95,9 +97,23 @@ class Vtqnm_Simple_View_Counter_Public {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/vtqnm-simple-view-counter-public.js', array( 'jquery' ), $this->version, false );
-
+        if (is_singular((!empty($this->settings['post_type']) ? $this->settings['post_type'] : null))) {
+            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/vtqnm-simple-view-counter-public.js', array('jquery'), $this->version, false);
+            wp_add_inline_script($this->plugin_name, $this->get_post_view_counter_inline_script());
+        }
 	}
 
+    private function get_post_view_counter_inline_script()
+    {
+        $delay = $this->settings['delay'] ?: '';
+
+        $url = admin_url('admin-ajax.php');
+        $nonce = wp_create_nonce( $this->plugin_name );
+
+        $id = get_the_ID();
+        return "
+            const instance = new Vtqnm.PostViews({url: '$url', nonce: '$nonce'});
+            instance.markViewedAfterDelay($id, $delay);
+        ";
+    }
 }

@@ -30,7 +30,8 @@ class Vtqnm_Simple_View_Counter_Deactivator {
 	 * @since    1.0.0
 	 */
 	public static function deactivate() {
-
+        remove_post_type_support('page', 'vtqnm-simple-view-counter');
+        remove_post_type_support('post', 'vtqnm-simple-view-counter');
 	}
 
 }

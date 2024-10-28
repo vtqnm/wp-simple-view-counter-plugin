@@ -30,7 +30,8 @@ class Vtqnm_Simple_View_Counter_Activator {
 	 * @since    1.0.0
 	 */
 	public static function activate() {
-
+        add_post_type_support('page', 'vtqnm-simple-view-counter');
+        add_post_type_support('post', 'vtqnm-simple-view-counter');
 	}
 
 }

@@ -28,6 +28,7 @@
  * @author     Vitalii Terentev <vtqnm0@gmail.com>
  */
 class Vtqnm_Simple_View_Counter {
+    const PLUGIN_NAME = 'vtqnm-simple-view-counter';
 
 	/**
 	 * The loader that's responsible for maintaining and registering all hooks that power
@@ -57,6 +58,9 @@ class Vtqnm_Simple_View_Counter {
 	 */
 	protected $version;
 
+    /** @var array{post_type: string[]} */
+    protected $default_settings;
+
 	/**
 	 * Define the core functionality of the plugin.
 	 *
@@ -72,14 +76,62 @@ class Vtqnm_Simple_View_Counter {
 		} else {
 			$this->version = '1.0.0';
 		}
-		$this->plugin_name = 'vtqnm-simple-view-counter';
+		$this->plugin_name = self::PLUGIN_NAME;
+        $this->default_settings = [
+            'delay' => 5
+        ];
 
 		$this->load_dependencies();
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
-
+        $this->define_ajax_hooks();
 	}
+
+    public static function can_update_post_views(WP_Post $post) {
+        if (
+            $post->post_status !== 'publish' ||
+            !in_array($post->post_type, ['post', 'page'])
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static function get_post_views($id = null) {
+        if (!is_numeric($id)) {
+            $id = get_the_ID();
+        }
+
+        $post = get_post($id);
+        if (!self::can_update_post_views($post)) {
+            return false;
+        }
+
+        $count = get_post_meta($id, self::PLUGIN_NAME, true);
+        return (filter_var($count, FILTER_VALIDATE_INT) && $count > 0) ? $count : 0;
+    }
+
+    public function update_view_counter($post_id) {
+        $post = get_post($post_id);
+        if (!$post || !$this->can_update_post_views($post)) {
+            return false;
+        }
+
+        $count = self::get_post_views($post->ID);
+        update_post_meta($post->ID, $this->plugin_name, ++$count);
+        return true;
+    }
+
+    public function ajax_update_views_counter() {
+        $post_id = filter_var($_POST["post_id"], FILTER_SANITIZE_NUMBER_INT);
+        if ($post_id < 1 || !wp_verify_nonce($_POST["nonce"], $this->plugin_name) || !setup_postdata($post_id) || !$this->update_view_counter($post_id)) {
+            wp_send_json_error('error');
+        }
+
+        wp_die();
+    }
 
 	/**
 	 * Load the required dependencies for this plugin.
@@ -167,13 +219,16 @@ class Vtqnm_Simple_View_Counter {
 	 * @access   private
 	 */
 	private function define_public_hooks() {
-
-		$plugin_public = new Vtqnm_Simple_View_Counter_Public( $this->get_plugin_name(), $this->get_version() );
+		$plugin_public = new Vtqnm_Simple_View_Counter_Public( $this->get_plugin_name(), $this->get_version(), $this->default_settings );
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-
 	}
+
+    private function define_ajax_hooks() {
+        $this->loader->add_action( 'wp_ajax_update_views_counter', $this, 'ajax_update_views_counter' );
+        $this->loader->add_action( 'wp_ajax_nopriv_update_views_counter', $this, 'ajax_update_views_counter' );
+    }
 
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.

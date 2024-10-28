@@ -1,32 +1,76 @@
 (function( $ ) {
 	'use strict';
 
-	/**
-	 * All of the code for your public-facing JavaScript source
-	 * should reside in this file.
-	 *
-	 * Note: It has been assumed you will write jQuery code here, so the
-	 * $ function reference has been prepared for usage within the scope
-	 * of this function.
-	 *
-	 * This enables you to define handlers, for when the DOM is ready:
-	 *
-	 * $(function() {
-	 *
-	 * });
-	 *
-	 * When the window is loaded:
-	 *
-	 * $( window ).load(function() {
-	 *
-	 * });
-	 *
-	 * ...and/or other possibilities.
-	 *
-	 * Ideally, it is not considered best practise to attach more than a
-	 * single DOM-ready or window-load handler for a particular page.
-	 * Although scripts in the WordPress core, Plugins and Themes may be
-	 * practising this, we should strive to set a better example in our own work.
-	 */
+	if (!window.hasOwnProperty('Vtqnm')) {
+		window.Vtqnm = {};
+	}
+
+	window.Vtqnm.PostViews = class {
+		constructor(settings) {
+			this.settings = settings;
+		}
+
+		async markViewed(id) {
+			if (this.isAlreadyViewed(id)) {
+				return true;
+			}
+
+			const form = new FormData();
+			form.append('nonce', this.settings.nonce);
+			form.append('action', 'update_views_counter')
+			form.append('post_id', id)
+
+			fetch(this.settings.url, {
+				method: 'post',
+				body: form
+			}).then(result => {
+				this.addViewedPost(id)
+			})
+		}
+
+		markViewedAfterDelay(id, delay = 0) {
+			if (!Number.isInteger(delay) || delay < 0) {
+				delay = 0;
+			}
+
+			setTimeout(() => {
+				this.markViewed(id);
+			}, delay * 1000)
+		}
+
+		isAlreadyViewed(id) {
+			return this.getViewedPosts().includes(id);
+		}
+
+		getViewedPosts() {
+			try {
+				const data = JSON.parse(localStorage.getItem("viewedPosts"));
+				return Array.isArray(data) ? data : [];
+
+			} catch (error) {
+				return [];
+			}
+		}
+
+		addViewedPost(postId) {
+			const posts = this.getViewedPosts();
+			posts.push(postId)
+
+			this.setViewedPosts(posts);
+		}
+
+		setViewedPosts(viewedPosts) {
+			localStorage.setItem('viewedPosts', JSON.stringify(viewedPosts));
+		}
+
+		rememberPostId(id) {
+			let viewedPosts = JSON.parse(localStorage.getItem("viewedPosts")) || [];
+			if (!viewedPosts.includes(postId)) {
+				viewedPosts.push(postId);
+				localStorage.setItem("viewedPosts", JSON.stringify(viewedPosts));
+			}
+		}
+
+	}
 
 })( jQuery );
